@@ -1,0 +1,35 @@
+cs5413_lightspeed@fireless.cs.cornell.edu
+
+pw: asdfghjkl
+
+check out code :git clone cs5413_lightspeed@fireless.cs.cornell.edu:/home/kslee/git/sonic.git
+
+
+
+make file -> SONIC_DDEBUG = 1 (show debugging message)
+
+:89 -> tester
+
+./tester mode=pkt_get,pkt_cap duration=10 verbose=2
+
+util.c :398  (enable it to get many messages)
+
+tcp standard:http://tools.ietf.org/html/rfc793
+
+reading order:
+
+test_user.c
+
+run.c
+
+mode.c
+
+config.c
+
+util.c
+
+pcs.c
+
+mac.c
+
+next meeting: 4:30 Friday room 440

@@ -1,0 +1,14 @@
+README:
+
+address_map.tcl: address map of qsys project.
+common.tcl: common routines used by other scripts
+config.tcl: setup MAC address in MAC component
+
+Steps to verify the transceiver functionality:
+
+1. Loopback at the MAC level, this can be done by calling the write_local_loopback 1.
+2. Loopback at the Altera Transceiver level,
+   - By writing to the PCS registers.
+3. Loopback at Netlogic level.
+   - write PMA loopback bit in netlogic
+4. Loopback between two ports.

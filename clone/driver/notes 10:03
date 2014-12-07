@@ -1,0 +1,9 @@
+notes 10/03
+ssh cs5413_lightspeed@compute29.fractus.cs.cornell.edu
+pass: asdfghjkl
+in the run.sh
+	duration: time of run 
+	mac_wait: 
+in the ioctl.h struct sonic_cap_enry change the size of the buffer
+./sonic_parse.py -h
+pkt_gen

@@ -1,0 +1,18 @@
+proc usage {} {
+    puts "################################################################"
+    puts "Usage: "
+    puts "  0. Type 'usage' to repeat this message"
+    puts "  1. Type 'source init' to load all debug routines"
+#    puts "  2. Type 'config' to set Netlogic to operating mode"
+#    puts "  3. Type 'lpbk 1' to set Netlogic PMA into loopback mode"
+#    puts "  4. Type 'lpbk 0' to unset Netlogic PMA from loopback mode"
+#    puts "  5. Type 'stats' to list the current status of the system"
+    puts "  6. Type 'config_mac <port num>' to set Mac address"
+    puts "  7. Type 'stats_mac <port num>' to list the statistics on MAC"
+    puts "  8. Type 'clr_mac' to clear all MAC stats counters"
+    puts "  9. Type 'gen_mac <pkt len> <pkt sz> <port num>' to generate packet stream"
+    puts "  10. Type 'clksync disable/enable' to disable or enable clksync state machine"
+    puts "  11. Type 'bypass disable/enable' to bypass clksync functionality altogether"
+    puts "  12. Type 'log <portN> <address>' to logging base address"
+    puts "################################################################"
+}

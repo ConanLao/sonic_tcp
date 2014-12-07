@@ -1,0 +1,11 @@
+#---------------------------
+#  SoNIC initialization
+#---------------------------
+
+source prompt.tcl
+source lib_common.tcl
+source lib_pma.tcl
+source lib_mac.tcl
+
+usage
+
