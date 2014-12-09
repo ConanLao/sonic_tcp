@@ -377,6 +377,9 @@ struct sonic_port_info {
     uint16_t port_src;
     uint16_t port_dst;
     uint16_t vlan_id;
+    uint32_t seq_number;
+    uint32_t ack_number;
+    uint8_t flag;
 
     char covert_msg[16];        // FIXME
 };
