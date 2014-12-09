@@ -202,7 +202,10 @@ struct sonic_packet {
     short type;
     short len;
     uint32_t idle;
-    uint64_t idle_bits;
+    uint64_t idle_bits; 
+    uint32_t seq_number;
+    uint32_t ack_number;
+    uint8_t flag;
     uint8_t buf[0];
 };
 
@@ -590,3 +593,4 @@ int sonic_gen_idles(struct sonic_port*, struct sonic_fifo *, int);
 uint16_t udp_csum(struct udphdr *, struct iphdr *);
 
 #endif /*__SONIC_HEADER__*/
+

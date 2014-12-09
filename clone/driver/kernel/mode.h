@@ -22,7 +22,8 @@
     SONIC_MODE( 20, pkt_rcv)                         \
     SONIC_MODE( 21, pkt_cap)                         \
     SONIC_MODE( 30, pkt_gencap)                   \
-    SONIC_MODE( 31, arp)
+    SONIC_MODE( 31, arp)				\
+    SONIC_MODE( 32, pkt_tcp)			
 
 #if SONIC_SFP
 #define SONIC_MODE_ARGS_SFP                                      \

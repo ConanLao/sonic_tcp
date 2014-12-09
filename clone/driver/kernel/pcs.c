@@ -46,8 +46,14 @@ sonic_gearbox(struct sonic_pcs *pcs, uint64_t prefix, uint64_t payload)
 #if SONIC_SFP
         if (unlikely(pcs->dma_page_index == 0)) 
             sonic_dma_tx(pcs);
+#elif !SONIC_KERNEL && SONIC_TCP
+       if (unlikely(pcs->dma_page_index == 0)){
+               put_write_entry(pcs->out_fifo, pcs->dma_page);
+               pcs->dma_page = get_write_entry(pcs->out_fifo);
+       }
+
 #endif /* SONIC_SFP */
-#if !SONIC_KERNEL
+#if !SONIC_KERNEL && !SONIC_TCP
         pcs->dma_page->reserved = NUM_BLOCKS_IN_PAGE;
 #endif /* SONIC_KERNEL */
         pcs->dma_page = ((struct sonic_dma_page *) pcs->dma_cur_buf) + pcs->dma_page_index;
@@ -391,7 +397,7 @@ int sonic_pcs_tx_loop(void *args)
 #endif /* SONIC_DDEBUG */
 
     SONIC_DDPRINT("\n");
-
+    pcs->dma_page = get_write_entry(pcs->out_fifo);
     START_CLOCK( );
 
 begin:
@@ -438,7 +444,7 @@ int sonic_pcs_rx_loop(void *args)
     struct sonic_pcs_stat *stat = &pcs->stat;
     int i, j, cnt, fifo_required=0, pkt_cnt=0, tail=0;
     uint64_t e_state=0;
-#if !SONIC_KERNEL
+#if !SONIC_KERNEL && !SONIC_TCP
     struct sonic_port_info *info = &pcs->port->info;
 #endif /* SONIC_KERNEL */
 
@@ -448,6 +454,9 @@ int sonic_pcs_rx_loop(void *args)
     sonic_prepare_pkt_gen_fifo(pcs->port->fifo[3], info);
     /* fill DMA buffer */
     sonic_fill_dma_buffer_for_rx_test(pcs, pcs->port->fifo[3]);
+#elif !SONIC_KERNEL && SONIC_TCP
+    pcs->dma_page = get_read_entry(pcs->in_fifo);
+    cnt = NUM_BLOCKS_IN_PAGE;
 #else /* SONIC_KERNEL */
     sonic_dma_rx(pcs);
     cnt = NUM_BLOCKS_IN_PAGE;
@@ -458,6 +467,10 @@ int sonic_pcs_rx_loop(void *args)
 begin:
 #if SONIC_SFP
     sonic_dma_rx(pcs);
+#elif SONIC_TCP && !SONIC_KERNEL
+    put_read_entry(pcs->in_fifo, pcs->dma_page);
+    pcs->dma_page = get_read_entry(pcs->in_fifo);
+//    DEBUG_MSG("rx  ??\n");
 #endif /* SONIC_SFP */
 
     if (likely(fifo_required == 0)) {
@@ -475,7 +488,7 @@ begin:
 
     for (i = 0 ; i < pcs->dma_buf_pages; i ++) {
         pcs->dma_page = ((struct sonic_dma_page*) pcs->dma_cur_buf) + i;
-#if !SONIC_SFP
+#if !SONIC_SFP && !SONIC_TCP
         cnt = pcs->dma_page->reserved;
 #endif /* !SONIC_SFP */
         for ( j = 0 ; j < cnt ; j ++) {

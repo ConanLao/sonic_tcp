@@ -43,9 +43,9 @@ static void sonic_print_pcs_stat(struct sonic_pcs_stat *stat, char *head, int id
 static void sonic_print_mac_stat(struct sonic_mac_stat *stat, char *head, int id)
 {
 #if SONIC_KERNEL 
-    SONIC_PRINT("[%s%d] time= %llu pkts= %llu err_crc= %llu err_len= %llu fifo= %llu\n", 
-            head, id, stat->total_time, stat->total_packets, stat->total_error_crc,
-            stat->total_error_len, stat->total_fifo_cnt);
+SONIC_PRINT("[%s%d] time= %llu pkts= %llu bytes= %llu err_crc= %llu err_len= %llu fifo= %llu\n",
+        head, id, stat->total_time, stat->total_packets, stat->total_bytes, stat->total_error_crc,
+	stat->total_error_len, stat->total_fifo_cnt);
 #else /* SONIC_KERNEL */
     SONIC_PRINT("[%s%d] thru= %f pkts= %llu bytes= %llu err_crc= %llu err_len= %llu fifo= %llu\n", 
             head, id, (double) stat->total_bytes * 8 / stat->total_time, 

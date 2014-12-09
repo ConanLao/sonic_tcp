@@ -60,6 +60,25 @@ static void sonic_set_fifo_pcs_forwarding_port (struct sonic_port *port) {
     port->tx_pcs->in_fifo = fifo2;
 }
 
+static void sonic_set_fifo_tcp(struct sonic_port *port) {
+    struct sonic_fifo *fifo1 = port->fifo[0];
+    struct sonic_fifo *fifo2 = port->fifo[1];
+#if !SONIC_KERNEL
+    struct sonic_fifo *pipe = port->fifo[2];
+    struct sonic_port *other_port = port->sonic->ports[port->port_id?0:1];
+#endif /*SONIC_KERNEL*/
+
+    port->rx_pcs->out_fifo = fifo1;
+    port->rx_mac->in_fifo = fifo1;
+
+    port->tx_pcs->in_fifo = fifo2;
+    port->tx_mac->out_fifo = fifo2;
+#if !SONIC_KERNEL
+    port->tx_pcs->out_fifo = pipe;
+    other_port->rx_pcs->in_fifo = pipe;
+#endif /*SONIC_KERNEL*/
+}
+
 static struct sonic_runtime_thread_funcs null_port={};
 
 #if !SONIC_KERNEL
@@ -136,6 +155,14 @@ static struct sonic_runtime_thread_funcs pcs_forward = {
     .app = sonic_app_cap_loop,
     .rx_pcs = sonic_pcs_rx_loop,
     .set_fifo = sonic_set_fifo_pcs_forwarding_port,
+};
+
+static struct sonic_runtime_thread_funcs pkt_tcp = {
+    .tx_pcs = sonic_pcs_tx_loop,
+    .rx_pcs = sonic_pcs_rx_loop,
+    .tx_mac = sonic_mac_pkt_generator_loop,
+    .rx_mac = sonic_mac_rx_loop,
+    .set_fifo = sonic_set_fifo_tcp,
 };
 
 static struct sonic_runtime_thread_funcs arp = {

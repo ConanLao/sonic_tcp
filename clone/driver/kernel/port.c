@@ -63,7 +63,7 @@ static struct sonic_pcs * sonic_alloc_pcs(struct sonic_port *port, int dma_buf_o
 
     pcs = ALLOC(sizeof(struct sonic_pcs));
     if (!pcs) {
-        SONIC_ERROR("pcs alloc failed\n");
+        //SONIC_ERROR("pcs alloc failed\n");
         return NULL;
     }
     SONIC_MPRINT(pcs, "[%d]" , port->port_id);
@@ -79,7 +79,7 @@ static struct sonic_pcs * sonic_alloc_pcs(struct sonic_port *port, int dma_buf_o
     // setting dma buffer
     pcs->dma_buf = ALLOC_PAGES(dma_buf_order + 1);
     if (!pcs->dma_buf) {
-        SONIC_ERROR("dma alloc failed\n");
+        //SONIC_ERROR("dma alloc failed\n");
         return NULL;
     }
     SONIC_MPRINT(pcs->dma_buf, "[%d]", port->port_id);

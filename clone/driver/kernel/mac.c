@@ -136,6 +136,7 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
     return tid;
 }
 
+//tcp send
 int sonic_mac_pkt_generator_loop(void *args)
 {
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
@@ -222,6 +223,7 @@ end:
     return 0;
 }
 
+//tcp receive
 int sonic_mac_rx_loop(void *args)
 {
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
@@ -250,11 +252,12 @@ begin:
         stat->total_bytes += packet->len;
         stat->total_packets ++;
 
-        crc = ~SONIC_CRC(packet);
+	// TODO update TCP state machine
+//        crc = ~SONIC_CRC(packet);
 
-        if (crc) {
-            stat->total_error_crc ++;
-        }
+//        if (crc) {
+//            stat->total_error_crc ++;
+//        }
     }
 
     put_read_entry(in_fifo, packets);
