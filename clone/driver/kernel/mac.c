@@ -21,6 +21,7 @@
 inline int sonic_update_csum_dport_id(uint8_t *p, int id, 
         int num_queue, int port_base)
 {
+    //SONIC_DPRINT("CHECKSUM\n");
     struct iphdr *iph = (struct iphdr *) (p + PREAMBLE_LEN + ETH_HLEN + SONIC_VLAN_ADD);
     struct udphdr *uh = (struct udphdr *) (((uint8_t *) iph) + IP_HLEN);
     uint32_t *pid = (uint32_t *) (((uint8_t *) uh) + TCP_HLEN);
@@ -60,6 +61,7 @@ inline int sonic_update_csum_dport_id(uint8_t *p, int id,
 //      exit(1);
 #endif
 
+    //:SONIC_DPRINT("CHECKSUM END\n");
     return 0;
 }
 
@@ -85,6 +87,8 @@ static inline int retrieve_bit(char * msg, int msg_len, int id)
 inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets, 
         struct sonic_port_info *info, int tid, uint64_t default_idle)
 {
+    
+    //SONIC_DPRINT("update begin\n");
     struct sonic_packet *packet;
     int i, covert_bit;
     uint32_t *pcrc, crc, idle;
@@ -102,6 +106,7 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
         sonic_update_csum_dport_id(packet->buf, tid, info->multi_queue, 
                 info->port_dst);
 
+	//SONIC_DPRINT("update A\n");
         idle = info->idle;
         switch(info->gen_mode) {
         case SONIC_PKT_GEN_CHAIN:
@@ -116,22 +121,35 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
                 idle = info->idle + info->delta;
             break;
         }
+	//SONIC_DPRINT("update B\n");
 
         if (unlikely(i == 0)){
+	//SONIC_DPRINT("update C\n");
             packet->len = info->pkt_len + 8;
+	//SONIC_DPRINT("update D\n");
             packet->idle = tid == 0 ? info->delay : idle;
+	//SONIC_DPRINT("update E\n");
         } else
+	//SONIC_DPRINT("update F\n");
             packet->idle = idle;
+	//SONIC_DPRINT("update G\n");
 
         pcrc = (uint32_t *) CRC_OFFSET(packet->buf, packet->len);
+	//SONIC_DPRINT("update H\n");
         *pcrc = 0;
-        crc = SONIC_CRC(packet) ^ 0xffffffff;
-        *pcrc = crc;
+	//SONIC_DPRINT("update I\n");
+        //crc = SONIC_CRC(packet) ^ 0xffffffff;
+	//SONIC_DPRINT("update J\n");
+        //*pcrc = crc;
+	//SONIC_DPRINT("update K\n");
 
         tid++;
+	//SONIC_DPRINT("update L\n");
     }
+    //SONIC_DPRINT("update M\n");
 
     packets->pkt_cnt = i;
+    //SONIC_DPRINT("update end\n");
 
     return tid;
 }
@@ -162,7 +180,9 @@ begin:
         goto end;
 
     packets->pkt_cnt = tcnt;
+    //SONIC_DPRINT("XXX\n");
     tid = sonic_update_fifo_pkt_gen(packets, info, tid, default_idle);
+    //SONIC_DPRINT("YYY\n");
 
     put_write_entry(out_fifo, packets);
 

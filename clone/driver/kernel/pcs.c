@@ -46,14 +46,21 @@ sonic_gearbox(struct sonic_pcs *pcs, uint64_t prefix, uint64_t payload)
 #if SONIC_SFP
         if (unlikely(pcs->dma_page_index == 0)) 
             sonic_dma_tx(pcs);
-#elif !SONIC_KERNEL && SONIC_TCP
+#elif !SONIC_KERNEL  
        if (unlikely(pcs->dma_page_index == 0)){
-               put_write_entry(pcs->out_fifo, pcs->dma_page);
-               pcs->dma_page = get_write_entry(pcs->out_fifo);
+    //           put_write_entry(pcs->out_fifo, pcs->dma_page);
+               put_write_entry(pcs->out_fifo, pcs->dma_cur_buf);
+               pcs->dma_cur_buf = get_write_entry(pcs->out_fifo);
+     //          pcs->dma_page = get_write_entry(pcs->out_fifo);
+	       if (pcs->dma_cur_buf == NULL) {
+		    pcs->dma_page =0;
+	            return;
+		}
+	       pcs->dma_page = pcs->dma_cur_buf;
        }
 
 #endif /* SONIC_SFP */
-#if !SONIC_KERNEL && !SONIC_TCP
+#if !SONIC_KERNEL 
         pcs->dma_page->reserved = NUM_BLOCKS_IN_PAGE;
 #endif /* SONIC_KERNEL */
         pcs->dma_page = ((struct sonic_dma_page *) pcs->dma_cur_buf) + pcs->dma_page_index;
@@ -123,6 +130,10 @@ scrambler(struct sonic_pcs *pcs, uint64_t syncheader, uint64_t payload)
     SONIC_DDPRINT("syncheader = %x payload = %.16llx scrambled = %.16llx\n", 
             (int)syncheader, (unsigned long long) payload, (unsigned long long) s);
 
+#if !SONIC_KERNEL
+    if (pcs->dma_cur_buf == NULL)
+        return s;
+#endif
     sonic_gearbox(pcs, syncheader, s);
 
     return s;
@@ -384,6 +395,8 @@ inline int sonic_decode(struct sonic_pcs *pcs, int idx, struct sonic_packet *pac
 
 int sonic_pcs_tx_loop(void *args)
 {
+    //return 0;
+    SONIC_DPRINT("BEGIN of SONIC_PCS_TX_LOOP\n");
     SONIC_THREAD_COMMON_VARIABLES(pcs, args);
     struct sonic_fifo *in_fifo = pcs->in_fifo;
     struct sonic_packets *packets;
@@ -396,8 +409,12 @@ int sonic_pcs_tx_loop(void *args)
     uint32_t *pid;
 #endif /* SONIC_DDEBUG */
 
-    SONIC_DDPRINT("\n");
-    pcs->dma_page = get_write_entry(pcs->out_fifo);
+    SONIC_DPRINT("\n");
+#if !SONIC_KERNEL
+    pcs->dma_cur_buf = get_write_entry(pcs->out_fifo);
+    pcs->dma_page = pcs->dma_cur_buf;
+    SONIC_PRINT("\n");
+#endif
     START_CLOCK( );
 
 begin:
@@ -432,11 +449,14 @@ end:
     STOP_CLOCK(stat);
 //    SONIC_OUTPUT(pcs, "%u\n", (unsigned) total_pkt);
 
+    SONIC_DPRINT("END of SONIC_PCS_TX_LOOP\n");
     return 0;
 }
 
 int sonic_pcs_rx_loop(void *args)
 {
+    //return 0;
+    SONIC_DPRINT("BEGIN of SONIC_PCS_RX_LOOP\n");
     SONIC_THREAD_COMMON_VARIABLES(pcs, args);
     struct sonic_fifo *out_fifo = pcs->out_fifo;
     struct sonic_packets *packets = NULL;
@@ -444,18 +464,18 @@ int sonic_pcs_rx_loop(void *args)
     struct sonic_pcs_stat *stat = &pcs->stat;
     int i, j, cnt, fifo_required=0, pkt_cnt=0, tail=0;
     uint64_t e_state=0;
-#if !SONIC_KERNEL && !SONIC_TCP
+#if !SONIC_KERNEL 
     struct sonic_port_info *info = &pcs->port->info;
 #endif /* SONIC_KERNEL */
 
-    SONIC_DDPRINT("\n");
+    SONIC_DPRINT("\n");
 
 #if !SONIC_KERNEL
-    sonic_prepare_pkt_gen_fifo(pcs->port->fifo[3], info);
+//    sonic_prepare_pkt_gen_fifo(pcs->port->fifo[3], info);
     /* fill DMA buffer */
-    sonic_fill_dma_buffer_for_rx_test(pcs, pcs->port->fifo[3]);
-#elif !SONIC_KERNEL && SONIC_TCP
-    pcs->dma_page = get_read_entry(pcs->in_fifo);
+//    sonic_fill_dma_buffer_for_rx_test(pcs, pcs->port->fifo[3]);
+    pcs->dma_cur_buf = get_read_entry(pcs->in_fifo);
+    pcs->dma_page = pcs->dma_cur_buf;
     cnt = NUM_BLOCKS_IN_PAGE;
 #else /* SONIC_KERNEL */
     sonic_dma_rx(pcs);
@@ -467,9 +487,15 @@ int sonic_pcs_rx_loop(void *args)
 begin:
 #if SONIC_SFP
     sonic_dma_rx(pcs);
-#elif SONIC_TCP && !SONIC_KERNEL
-    put_read_entry(pcs->in_fifo, pcs->dma_page);
-    pcs->dma_page = get_read_entry(pcs->in_fifo);
+#elif !SONIC_KERNEL
+//    put_read_entry(pcs->in_fifo, pcs->dma_page);
+    put_read_entry(pcs->in_fifo, pcs->dma_cur_buf);
+    pcs->dma_cur_buf = get_read_entry(pcs->in_fifo);
+    if(!pcs->dma_cur_buf) 
+	goto end;
+
+    //pcs->dma_page = get_read_entry(pcs->in_fifo);
+    pcs->dma_page = pcs->dma_cur_buf;
 //    DEBUG_MSG("rx  ??\n");
 #endif /* SONIC_SFP */
 
@@ -488,8 +514,8 @@ begin:
 
     for (i = 0 ; i < pcs->dma_buf_pages; i ++) {
         pcs->dma_page = ((struct sonic_dma_page*) pcs->dma_cur_buf) + i;
-#if !SONIC_SFP && !SONIC_TCP
-        cnt = pcs->dma_page->reserved;
+#if !SONIC_SFP 
+//        cnt = pcs->dma_page->reserved;
 #endif /* !SONIC_SFP */
         for ( j = 0 ; j < cnt ; j ++) {
             tail = sonic_decode(pcs, j, packet);
@@ -539,8 +565,8 @@ begin:
     }
 
 #if !SONIC_SFP
-    pcs->state = PCS_INITIAL_STATE;
-    pcs->r_state = RX_INIT;
+//    pcs->state = PCS_INITIAL_STATE;
+//    pcs->r_state = RX_INIT;
 #endif /* SONIC_SFP */
 
     if (*stopper == 0)
@@ -551,6 +577,7 @@ end:
 //    STOP_CLOCK(pcs->debug * 66);
     STOP_CLOCK(stat);
 //    SONIC_OUTPUT(pcs, "%u\n", (unsigned) total_pkt_cnt);
+    SONIC_DPRINT("END of SONIC_PCS_TX_LOOP\n");
 
     return 0;
 }

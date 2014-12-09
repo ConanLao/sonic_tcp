@@ -86,7 +86,7 @@ struct sonic_config_runtime_args {
 #define SONIC_CONFIG_SYSTEM_ARGS                        \
     SONIC_CONFIG_SYSTEM(tx_dma_exp, 4)                  \
     SONIC_CONFIG_SYSTEM(tx_dma_num_desc, 1)             \
-    SONIC_CONFIG_SYSTEM(rx_dma_exp, 3)                  \
+    SONIC_CONFIG_SYSTEM(rx_dma_exp, 4)                  \
     SONIC_CONFIG_SYSTEM(rx_dma_num_desc, 1)             \
     SONIC_CONFIG_SYSTEM(fifo_exp, 4)                    \
     SONIC_CONFIG_SYSTEM(fifo_num_ent, 3)                \

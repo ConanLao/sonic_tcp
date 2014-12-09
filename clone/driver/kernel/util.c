@@ -295,6 +295,7 @@ static inline void sonic_fill_tcp_payload(uint8_t *data, int len)
 
 static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, int len,struct iphdr *iph)
 {
+    //SONIC_DPRINT("sonic_fill_tcp begin\n");
     //struct udphdr *udp = (struct udphdr *) data;
     struct tcphdr *tcp = (struct tcphdr *)data;
     //udp->source = htons(info->port_src);
@@ -302,10 +303,11 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
     //	udp->dest = htons(info->port_dst + csum_debug++);
     tcp->source = htons(info->port_src);
     tcp->dest = htons(info->port_dst);
-    tcp->seq = htonl(info->seq_number);
-    tcp->ack_seq = htonl(info->ack_number);
-    memcpy(((uint8_t*)tcp)+13,info->flag,sizeof(uint8_t)); 
+    //tcp->seq = htonl(info->seq_number);
+    //tcp->ack_seq = htonl(info->ack_number);
+    //memcpy(((uint8_t*)tcp)+13,info->flag,sizeof(uint8_t)); 
     //udp->len = htons(len-4);
+    //SONIC_DPRINT("HERE!!,6");
         
     sonic_fill_tcp_payload(data + TCP_HLEN , len - TCP_HLEN);
     //udp->check = 0;
@@ -315,6 +317,7 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
     iph->check = ip_fast_csum(iph, iph->ihl);	// ip checksum */
 #else
     iph->check = csum(iph, iph->ihl*4);
+    //SONIC_DPRINT("sonic_fill_ip end\n");
 
 #if 0
 //	SONIC_DPRINT("network: dport = %x (%x), udp->check = %x (%x), csum_debug = %x (%x)\n",
@@ -346,6 +349,7 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
 
 static inline void sonic_fill_ip(struct sonic_port_info *info, uint8_t *data, int len)
 {
+    //SONIC_DPRINT("sonic_fill_ip begin\n");
     struct iphdr *ip = (struct iphdr *) data;
     ip->ihl = IP_HLEN / 4;
     ip->version = IPVERSION;
@@ -366,10 +370,12 @@ static inline void sonic_fill_ip(struct sonic_port_info *info, uint8_t *data, in
 */
 
 	sonic_fill_tcp(info, data + IP_HLEN , len - IP_HLEN,ip);
+    //SONIC_DPRINT("sonic_fill_ip end\n");
 }
 
 static inline void sonic_fill_eth(struct sonic_port_info *info, uint8_t *data, int len)
 {
+    //SONIC_DPRINT("sonic_fill_eth begin\n");
 
 #if !SONIC_VLAN
     struct ethhdr *eth = (struct ethhdr *) data;
@@ -387,6 +393,7 @@ static inline void sonic_fill_eth(struct sonic_port_info *info, uint8_t *data, i
     memcpy(eth->h_dest, info->mac_dst, ETH_ALEN);
 
     sonic_fill_ip(info, data + ETH_HLEN + SONIC_VLAN_ADD, len - SONIC_VLAN_ADD - ETH_HLEN);
+    //SONIC_DPRINT("sonic_fill_eth end\n");
 }
 
 void sonic_fill_packet(uint8_t *data, int len)
@@ -410,6 +417,7 @@ void sonic_fill_frame(struct sonic_port_info *info, uint8_t *data, int len)
 int sonic_fill_buf_batching(struct sonic_port_info *info, \
         struct sonic_packets *packets, int bufsize)
 {
+    //SONIC_DPRINT("buf_batching begin\n");
     int i=0, pkt_len = info->pkt_len, consumed;
     struct sonic_packet * packet = packets->packets, * next_packet;
     uint8_t * p; 
@@ -450,6 +458,7 @@ int sonic_fill_buf_batching(struct sonic_port_info *info, \
 #if SONIC_DDEBUG
 //    sonic_print_hex((uint8_t*) packets, bufsize, 32);
 #endif /* SONIC_DDEBUG */
+    //SONIC_DPRINT("buf_batching end\n");
     return i;
 }
 
