@@ -135,8 +135,9 @@ extern int sonic_verbose;
 
 #define PREAMBLE_LEN        8
 #define IP_HLEN             sizeof(struct iphdr)
-#define UDP_HLEN            sizeof(struct udphdr)
-#define PAYLOAD_OFFSET      (ETH_HLEN + IP_HLEN + UDP_HLEN)
+// #define UDP_HLEN            sizeof(struct udphdr)
+#define TCP_HLEN            sizeof(struct tcphdr)
+#define PAYLOAD_OFFSET      (ETH_HLEN + IP_HLEN + TCP_HLEN)
 #define CRC_OFFSET(p, len)  (((char * )p) + len - 4)
 
 #define IDLE_FRAME          0x1e

@@ -165,7 +165,7 @@ void sonic_print_eth_frame(uint8_t * data, int len)
 #if SONIC_DDEBUG
     struct ethhdr *eth = (struct ethhdr *) (data + PREAMBLE_LEN);	// preamble
     struct iphdr *ip = (struct iphdr *) (((uint8_t *) eth) + ETH_HLEN);
-    struct udphdr *udp = (struct udphdr *) (((uint8_t *) ip) + IP_HLEN);
+    struct tcphdr *tcp = (struct tcphdr *) (((uint8_t *) ip) + IP_HLEN);
 
     unsigned char * mac_src = eth->h_source;
     unsigned char * mac_dst = eth->h_dest;
@@ -181,8 +181,11 @@ void sonic_print_eth_frame(uint8_t * data, int len)
 
     SONIC_DDPRINT("-ip_src = %x--ip_dst = %x\n", ntohl(ip->saddr), 
             ntohl(ip->daddr));
-    SONIC_DDPRINT("-port_src = %d--port_dst = %d\n", ntohs(udp->source),
-            ntohs(udp->dest));
+    SONIC_DDPRINT("-port_src = %d--port_dst = %d\n", ntohs(tcp->source),
+            ntohs(tcp->dest));
+    SONIC_DDPRINT("-seq_number = %d--ack_number = %d\n", ntohl(tcp->seq),
+            ntohl(tcp->ack_seq));
+    SONIC_DDPRINT("-flag %d\n", *(((uint8_t*)tcp)+13));
 
     sonic_print_hex (data, len, 32);
 }
@@ -274,7 +277,7 @@ uint16_t udp_csum(struct udphdr *uh, struct iphdr *iph)
 //static int csum_debug=0;
 
 /* Adapted from Tudor's code */
-static inline void sonic_fill_udp_payload(uint8_t *data, int len)
+static inline void sonic_fill_tcp_payload(uint8_t *data, int len)
 {
     unsigned char cycle[] = "ERLUOERLUO";
     int i, len_cycle = strlen((char *)cycle);
@@ -290,18 +293,23 @@ static inline void sonic_fill_udp_payload(uint8_t *data, int len)
     }
 }
 
-static inline void sonic_fill_udp(struct sonic_port_info *info, uint8_t *data, int len,struct iphdr *iph)
+static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, int len,struct iphdr *iph)
 {
-    struct udphdr *udp = (struct udphdr *) data;
-
-    udp->source = htons(info->port_src);
-    udp->dest = htons(info->port_dst);
+    //struct udphdr *udp = (struct udphdr *) data;
+    struct tcphdr *tcp = (struct tcphdr *)data;
+    //udp->source = htons(info->port_src);
+    //udp->dest = htons(info->port_dst);
     //	udp->dest = htons(info->port_dst + csum_debug++);
-    udp->len = htons(len-4);
+    tcp->source = htons(info->port_src);
+    tcp->dest = htons(info->port_dst);
+    tcp->seq = htonl(info->seq_number);
+    tcp->ack_seq = htonl(info->ack_number);
+    memcpy(((uint8_t*)tcp)+13,info->flag,sizeof(uint8_t)); 
+    //udp->len = htons(len-4);
         
-    sonic_fill_udp_payload(data + UDP_HLEN , len - UDP_HLEN);
-    udp->check = 0;
-    udp->check = htons(udp_csum(udp,iph));
+    sonic_fill_tcp_payload(data + TCP_HLEN , len - TCP_HLEN);
+    //udp->check = 0;
+    //udp->check = htons(udp_csum(udp,iph));
     // FIXME: WHY here?
 #if SONIC_KERNEL
     iph->check = ip_fast_csum(iph, iph->ihl);	// ip checksum */
@@ -347,7 +355,7 @@ static inline void sonic_fill_ip(struct sonic_port_info *info, uint8_t *data, in
     ip->frag_off = 0x40;
     ip->ttl = 64;
     ip->check = 0;
-    ip->protocol = IPPROTO_UDP;
+    ip->protocol = IPPROTO_TCP;
     ip->saddr = info->ip_src;
     ip->daddr = info->ip_dst;
 /*#if SONIC_KERNEL
@@ -357,7 +365,7 @@ static inline void sonic_fill_ip(struct sonic_port_info *info, uint8_t *data, in
 #endif
 */
 
-	sonic_fill_udp(info, data + IP_HLEN , len - IP_HLEN,ip);
+	sonic_fill_tcp(info, data + IP_HLEN , len - IP_HLEN,ip);
 }
 
 static inline void sonic_fill_eth(struct sonic_port_info *info, uint8_t *data, int len)
@@ -383,7 +391,7 @@ static inline void sonic_fill_eth(struct sonic_port_info *info, uint8_t *data, i
 
 void sonic_fill_packet(uint8_t *data, int len)
 {
-    sonic_fill_udp_payload(data, len);
+    sonic_fill_tcp_payload(data, len);
 }
 
 /* the address of data must be aligned to 16k + 8 */
