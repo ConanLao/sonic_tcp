@@ -23,7 +23,7 @@ inline int sonic_update_csum_dport_id(uint8_t *p, int id,
 {
     struct iphdr *iph = (struct iphdr *) (p + PREAMBLE_LEN + ETH_HLEN + SONIC_VLAN_ADD);
     struct udphdr *uh = (struct udphdr *) (((uint8_t *) iph) + IP_HLEN);
-    uint32_t *pid = (uint32_t *) (((uint8_t *) uh) + UDP_HLEN);
+    uint32_t *pid = (uint32_t *) (((uint8_t *) uh) + TCP_HLEN);
     int xid=*pid;
     uint64_t tmp;
     short pdest = uh->dest, pcsum = uh->check;
