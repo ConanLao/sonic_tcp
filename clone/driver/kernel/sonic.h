@@ -204,9 +204,9 @@ struct sonic_packet {
     short len;
     uint32_t idle;
     uint64_t idle_bits; 
-    uint32_t seq_number;
-    uint32_t ack_number;
-    uint8_t flag;
+//    uint32_t seq_number;
+//    uint32_t ack_number;
+//    uint8_t flag;
     uint8_t buf[0];
 };
 

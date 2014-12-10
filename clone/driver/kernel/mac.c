@@ -12,13 +12,12 @@
 #include <linux/crc32.h>        // ether_crc
 #include <linux/if_ether.h>     //struct ethhdr
 #include <linux/slab.h>
-#include <linux/types.h>
 #include <linux/time.h>
 #endif /* SONIC_KERNEL */
-
+#include <linux/types.h>
 #include "sonic.h"
 
-atomic_t state;
+unsigned int state;
 
 inline int sonic_update_csum_dport_id(uint8_t *p, int id, 
         int num_queue, int port_base)
@@ -156,10 +155,86 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
     return tid;
 }
 
+inline int sonic_send_syn(struct sonic_packets *packets, 
+        struct sonic_port_info *info, int tid, uint64_t default_idle)
+{
+    
+    //SONIC_DPRINT("update begin\n");
+    struct sonic_packet *packet;
+    int i, covert_bit;
+    uint32_t *pcrc, crc, idle;
+    int j = 0;
+    FOR_SONIC_PACKETS(i, packets, packet) {
+        if (unlikely(tid == info->pkt_cnt)) {
+            packet->len = 0;
+            packet->idle = default_idle;
+            packets->pkt_cnt = i == 0? 1 : i; 
+            return tid;
+        }
+	if (j==0) {
+	    info->flag = FLAG_SYN;
+	    sonic_fill_frame(info, packet->buf, info->pkt_len);
+	    info->flag = 0;
+	}
+//        SONIC_PRINT("%d\n", tid);
+
+        sonic_update_csum_dport_id(packet->buf, tid, info->multi_queue, 
+                info->port_dst);
+
+	//SONIC_DPRINT("update A\n");
+        idle = info->idle;
+        switch(info->gen_mode) {
+        case SONIC_PKT_GEN_CHAIN:
+            if (tid % info->chain_num == 0) 
+                idle = info->chain_idle;
+            break;
+        case SONIC_PKT_GEN_COVERT:
+            covert_bit = retrieve_bit(info->covert_msg, strlen(info->covert_msg), tid);
+            if (covert_bit)
+                idle = ((info->idle - info->delta)< 12) ? 12 : (info->idle - info->delta);
+            else
+                idle = info->idle + info->delta;
+            break;
+        }
+	//SONIC_DPRINT("update B\n");
+
+        if (unlikely(i == 0)){
+	//SONIC_DPRINT("update C\n");
+            packet->len = info->pkt_len + 8;
+	//SONIC_DPRINT("update D\n");
+            packet->idle = tid == 0 ? info->delay : idle;
+	//SONIC_DPRINT("update E\n");
+        } else
+	//SONIC_DPRINT("update F\n");
+            packet->idle = idle;
+	//SONIC_DPRINT("update G\n");
+
+        pcrc = (uint32_t *) CRC_OFFSET(packet->buf, packet->len);
+	//SONIC_DPRINT("update H\n");
+        *pcrc = 0;
+	//SONIC_DPRINT("update I\n");
+        //crc = SONIC_CRC(packet) ^ 0xffffffff;
+	//SONIC_DPRINT("update J\n");
+        //*pcrc = crc;
+	//SONIC_DPRINT("update K\n");
+
+        tid++;
+	j++;
+	if (j == 1){
+	    break;//send only one syn
+	}
+	//SONIC_DPRINT("update L\n");
+    }
+    //SONIC_DPRINT("update M\n");
+
+    packets->pkt_cnt = i;
+    //SONIC_DPRINT("update end\n");
+
+    return tid;
+}
 //tcp send
 int sonic_mac_pkt_generator_loop(void *args)
 {   
-    
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
     int isClient = (mac->port_id == 0);
     if (mac->port_id == 0){
@@ -167,6 +242,7 @@ int sonic_mac_pkt_generator_loop(void *args)
     } else {
 	SONIC_DPRINT("SERVER\n");
     }
+    
     struct sonic_fifo *out_fifo = mac->out_fifo;
     struct sonic_port_info *info = &mac->port->info;
     struct sonic_packets *packets;
@@ -179,26 +255,41 @@ int sonic_mac_pkt_generator_loop(void *args)
 
     tcnt = sonic_prepare_pkt_gen_fifo(out_fifo, info);
 
-    START_CLOCK();
+    //START_CLOCK();
 
     if (sonic_gen_idles(mac->port, out_fifo, info->wait))
         goto end;
-
+    
+    START_CLOCK();
+    if (isClient) { //client
+	state = WAITING_FOR_SYNACK;
+	while (state == WAITING_FOR_SYNACK){
+	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
+	    tid = sonic_send_syn(packets, info, tid, default_idle);
+	}
+    }else{ //server
+	
+    } 
+/**
 begin:
     packets = (struct sonic_packets *) get_write_entry(out_fifo);
     if (!packets)
         goto end;
-
+    
     packets->pkt_cnt = tcnt;
+    //SONIC_DPRINT("pkt_cnt = %d\n", tcnt);
     //SONIC_DPRINT("XXX\n");
     tid = sonic_update_fifo_pkt_gen(packets, info, tid, default_idle);
+    //SONIC_DPRINT("tid = %d\n", tid);
     //SONIC_DPRINT("YYY\n");
 
     put_write_entry(out_fifo, packets);
 
     if (*stopper == 0)
         goto begin;
+*/
 end:
+
     STOP_CLOCK(stat);
     stat->total_bytes = (uint64_t) tid * (info->pkt_len +8);
     stat->total_packets = tid;

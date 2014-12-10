@@ -303,9 +303,9 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
     //	udp->dest = htons(info->port_dst + csum_debug++);
     tcp->source = htons(info->port_src);
     tcp->dest = htons(info->port_dst);
-    //tcp->seq = htonl(info->seq_number);
-    //tcp->ack_seq = htonl(info->ack_number);
-    //memcpy(((uint8_t*)tcp)+13,info->flag,sizeof(uint8_t)); 
+    tcp->seq = htonl(info->seq_number);
+    tcp->ack_seq = htonl(info->ack_number);
+    memcpy(((uint8_t*)tcp)+13,&(info->flag),sizeof(uint8_t)); 
     //udp->len = htons(len-4);
     //SONIC_DPRINT("HERE!!,6");
         
