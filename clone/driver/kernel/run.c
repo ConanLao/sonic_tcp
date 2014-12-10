@@ -105,22 +105,18 @@ static inline void sonic_stop_port(struct sonic_port *port)
 #if !SONIC_KERNEL
 int sonic_wait_port(struct sonic_port *port)
 {
-    SONIC_DPRINT("wait port begin\n");
-    if (!port->runtime_funcs) {
-	SONIC_DPRINT("wait port A\n");
-        return -1;}
+    if (!port->runtime_funcs) 
+        return -1;
 
 #define SONIC_THREADS(x, y, z)	\
     pthread_join(port->pid_##x, NULL);
     SONIC_THREADS_ARGS
 #undef SONIC_THREADS
-    SONIC_DPRINT("wait port B\n");
     return 0;
 }
 #else /* SONIC_KERNEL */
 int sonic_wait_port(struct sonic_port *port)
 {
-    SONIC_DPRINT("A\n");
     int ret =0;
     if (!port->runtime_funcs)
         return -1;
@@ -143,17 +139,9 @@ int sonic_wait_port(struct sonic_port *port)
 #endif /* SONIC_KERNEL */
 int sonic_wait_sonic(struct sonic_priv *sonic)
 {
-    SONIC_DPRINT("AAA \n");
-    if (sonic == NULL) {
-	SONIC_DPRINT("sonic is null \n");
-    }    
-    if (sonic->ports[0] == NULL) {
-	SONIC_DPRINT("sonic port is null \n");
-    }
     sonic_wait_port(sonic->ports[0]);
     sonic_wait_port(sonic->ports[1]);
 
-    SONIC_DPRINT("end \n");
     return 0;
 }
 

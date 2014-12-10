@@ -396,7 +396,6 @@ inline int sonic_decode(struct sonic_pcs *pcs, int idx, struct sonic_packet *pac
 int sonic_pcs_tx_loop(void *args)
 {
     //return 0;
-    SONIC_DPRINT("BEGIN of SONIC_PCS_TX_LOOP\n");
     SONIC_THREAD_COMMON_VARIABLES(pcs, args);
     struct sonic_fifo *in_fifo = pcs->in_fifo;
     struct sonic_packets *packets;
@@ -449,14 +448,12 @@ end:
     STOP_CLOCK(stat);
 //    SONIC_OUTPUT(pcs, "%u\n", (unsigned) total_pkt);
 
-    SONIC_DPRINT("END of SONIC_PCS_TX_LOOP\n");
     return 0;
 }
 
 int sonic_pcs_rx_loop(void *args)
 {
     //return 0;
-    SONIC_DPRINT("BEGIN of SONIC_PCS_RX_LOOP\n");
     SONIC_THREAD_COMMON_VARIABLES(pcs, args);
     struct sonic_fifo *out_fifo = pcs->out_fifo;
     struct sonic_packets *packets = NULL;
@@ -577,7 +574,6 @@ end:
 //    STOP_CLOCK(pcs->debug * 66);
     STOP_CLOCK(stat);
 //    SONIC_OUTPUT(pcs, "%u\n", (unsigned) total_pkt_cnt);
-    SONIC_DPRINT("END of SONIC_PCS_TX_LOOP\n");
 
     return 0;
 }

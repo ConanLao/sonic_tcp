@@ -156,12 +156,20 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
 
 //tcp send
 int sonic_mac_pkt_generator_loop(void *args)
-{
+{   
+    
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
+    int isClient = (mac->port_id == 0);
+    if (mac->port_id == 0){
+	SONIC_DPRINT("CLIENT\n");
+    } else {
+	SONIC_DPRINT("SERVER\n");
+    }
     struct sonic_fifo *out_fifo = mac->out_fifo;
     struct sonic_port_info *info = &mac->port->info;
     struct sonic_packets *packets;
     struct sonic_mac_stat *stat = &mac->stat;
+    
     int tid=0, tcnt=0;
     uint64_t default_idle = power_of_two(out_fifo->exp) * 496;
 
@@ -247,6 +255,12 @@ end:
 int sonic_mac_rx_loop(void *args)
 {
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
+    int isClient = (mac->port_id == 0);
+    if (mac->port_id == 0){
+	SONIC_DPRINT("CLIENT\n");
+    } else {
+	SONIC_DPRINT("SERVER\n");
+    }   
     struct sonic_fifo *in_fifo = mac->in_fifo;
     struct sonic_packets *packets;
     struct sonic_packet *packet;
