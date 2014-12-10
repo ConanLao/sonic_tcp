@@ -598,3 +598,26 @@ uint16_t udp_csum(struct udphdr *, struct iphdr *);
 
 #endif /*__SONIC_HEADER__*/
 
+//TCP flags
+#define FLAG_DATA 0
+#define FLAG_FIN 1
+#define FLAG_SYN 2
+#define FLAG_RST 4
+#define FLAG_PSH 8
+#define FLAG_ACK 16
+#define FLAG_URG 32
+#define FLAG_ECE 64
+#define FLAG_CWR 128
+#define FLAG_NS 256
+#define FLAG_SYNACK 18
+#define FLAG_FINACK 17
+#define PORT 5000
+
+
+#define WAITING_FOR_SYN 0  
+#define WAITING_FOR_SYNACK 1 
+#define WAITING_FOR_ACK 2
+#define CONNECTED 3
+#define WAITING_FOR_FIN 4
+#define CLOSED 5
+
