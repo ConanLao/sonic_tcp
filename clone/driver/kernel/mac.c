@@ -44,6 +44,13 @@ uint32_t unpack_uint32(const uint8_t* buf) {
     return ntohl(val);
 }
 
+inline tcp_header_t* get_tcph(sonic_packet* packet)
+{
+    struct ethhdr *eth = (struct ethhdr *) (packet->buf+8);
+    struct iphdr *ip = (struct iphdr *) (eth+ ETH_HLEN + SONIC_VLAN_ADD);
+    struct tcp_header_t * tcp = (struct tcp_header_t *) (ip+IP_HLEN);
+    return tcp;
+}
 
 /*end of tcp variables */
 inline int sonic_update_csum_dport_id(uint8_t *p, int id, 
@@ -423,7 +430,8 @@ begin:
         stat->total_packets ++;
 
 	// TODO update TCP state machine
-          if(packet->flag == FLAG_RST)
+    tcp_header_t* tcph = get_tcph(packet);
+          if(tcph->flags == FLAG_RST)
           {
             state = CLOSED;
             continue;
@@ -431,21 +439,21 @@ begin:
         //server:
         if(type == TYPE_SERVER)
         {
-            if(packet->flag == FLAG_SYN && state ==WAITING_FOR_SYN)
+            if(tcph->flags == FLAG_SYN && state ==WAITING_FOR_SYN)
             {   
-                dst_port = unpack_uint16(packet->src_port);
+                dst_port = unpack_uint16(tcph->src_port);
                 state = WAITING_FOR_ACK;
-                seq_l = unpack_uint32(packet->seq_num);
-                ack_l = unpack_uint32(packet->ack_num);
+                seq_l = unpack_uint32(tcph->seq_num);
+                ack_l = unpack_uint32(tcph->ack_num);
                 if(ack != seq_l) continue; 
                 ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_SYN | FLAG_ACK ,seq, ack,window);
                 continue;
             }
-            if(packet->flag == FLAG_ACK && state == WAITING_FOR_ACK)
+            if(tcph->flags == FLAG_ACK && state == WAITING_FOR_ACK)
             {
-                seq_l = unpack_uint32(packet->seq_num);
-                ack_l = unpack_uint32(packet->ack_num);
+                seq_l = unpack_uint32(tcph->seq_num);
+                ack_l = unpack_uint32(tcph->ack_num);
                 if(ack != seq_l) continue; 
                 //ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
@@ -456,12 +464,12 @@ begin:
         }
         if(type = TYPE_CLIENT)
         {
-            if(packet->flag == FLAG_SYNACK && state ==WAITING_FOR_SYNACK)
+            if(tcph->flags == FLAG_SYNACK && state ==WAITING_FOR_SYNACK)
             {   
-                dst_port = unpack_uint16(packet->src_port);
+                dst_port = unpack_uint16(tcph->src_port);
                 state = CONNECTED;
-                seq_l = unpack_uint32(packet->seq_num);
-                ack_l = unpack_uint32(packet->ack_num);
+                seq_l = unpack_uint32(tcph->seq_num);
+                ack_l = unpack_uint32(tcph->ack_num);
                 if(ack != seq_l) continue; 
                 ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_SYN | FLAG_ACK ,seq, ack,window);
@@ -469,10 +477,10 @@ begin:
             }
         }
 
-          if( (packet->flag == FLAG_FINACK || packet->flag == FLAG_FIN) && state == CONNECTED)
+          if( (tcph->flags == FLAG_FINACK || tcph->flags == FLAG_FIN) && state == CONNECTED)
             {
-                seq_l = unpack_uint32(packet->seq_num);
-                ack_l = unpack_uint32(packet->ack_num);
+                seq_l = unpack_uint32(tcph->seq_num);
+                ack_l = unpack_uint32(tcph->ack_num);
                 if(ack != seq_l) continue; 
                 state = WAITING_FOR_FIN;
                 //ack  = seq_l+1;
@@ -481,10 +489,10 @@ begin:
                 //state = CONNECTED;
                 continue;
             }
-            if(packet->flag == FLAG_ACK && state == CONNECTED)
+            if(tcph->flags == FLAG_ACK && state == CONNECTED)
             {
-                seq_l = unpack_uint32(packet->seq_num);
-                ack_l = unpack_uint32(packet->ack_num);
+                seq_l = unpack_uint32(tcph->seq_num);
+                ack_l = unpack_uint32(tcph->ack_num);
                 if(ack != seq_l) continue; 
                 //ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
@@ -492,10 +500,10 @@ begin:
                 //state = CONNECTED;
                 continue;
             }
-            if( (packet->flag == FLAG_FINACK || packet->flag == FLAG_FIN) && state == CONNECTED)
+            if( (tcph->flags == FLAG_FINACK || tcph->flags == FLAG_FIN) && state == CONNECTED)
             {
-                seq_l = unpack_uint32(packet->seq_num);
-                ack_l = unpack_uint32(packet->ack_num);
+                seq_l = unpack_uint32(tcph->seq_num);
+                ack_l = unpack_uint32(tcph->ack_num);
                 if(ack != seq_l) continue; 
                 //ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);

@@ -620,6 +620,22 @@ uint16_t udp_csum(struct udphdr *, struct iphdr *);
 
 #define TYPE_SERVER 0
 #define TYPE_CLIENT 1
+/*
+ *struct for the tcp header
+ */
+typedef struct    
+{
+    uint8_t src_port[2];
+    uint8_t dst_port[2];
+    uint8_t seq_num[4];
+    uint8_t ack_num[4];
+    uint8_t data_res_ns;
+    uint8_t flags;
+    uint8_t window[2];
+    uint8_t checksum[2];
+    uint8_t urgent_p[2];
+    uint8_t options_and_data[0];
+}tcp_header_t;
 
 void pack_uint16(uint16_t val, uint8_t* buf);
 
