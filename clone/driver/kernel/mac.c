@@ -289,6 +289,40 @@ begin:
         stat->total_packets ++;
 
 	// TODO update TCP state machine
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
 //        crc = ~SONIC_CRC(packet);
 
 //        if (crc) {
