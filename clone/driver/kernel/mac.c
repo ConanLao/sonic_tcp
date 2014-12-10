@@ -18,8 +18,10 @@
 
 #include "sonic.h"
 
+/* added variables */
 atomic_t state;
-
+uint32_t seq,ack;
+/*end of tcp variables */
 inline int sonic_update_csum_dport_id(uint8_t *p, int id, 
         int num_queue, int port_base)
 {
@@ -257,10 +259,14 @@ end:
 int sonic_mac_rx_loop(void *args)
 {
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
+    int type;
     int isClient = (mac->port_id == 0);
     if (mac->port_id == 0){
+        type = TYPE_CLIENT;
 	SONIC_DPRINT("CLIENT\n");
     } else {
+        type = TYPE_SERVER;
+    atomic_set(&state,WAITING_FOR_SYN);
 	SONIC_DPRINT("SERVER\n");
     }   
     struct sonic_fifo *in_fifo = mac->in_fifo;
@@ -273,8 +279,14 @@ int sonic_mac_rx_loop(void *args)
 
     SONIC_DPRINT("\n");
 
+    if()
     START_CLOCK();
-
+    /* variables for tcp */
+    int ack_l=0, seq_l =0;
+    int resend = 0;
+    int size;
+    /*end of declaration */
+    //for now, did not considering resend scheme here. 
 begin:
     packets = (struct sonic_packets *) get_read_entry(in_fifo);
     if (!packets)
@@ -289,39 +301,86 @@ begin:
         stat->total_packets ++;
 
 	// TODO update TCP state machine
-        
+          if( (packet->flag == FLAG_RST)
+          {
+            state = CLOSED;
+            continue;
+          }
+        //server:
+        if(type == TYPE_SERVER)
+        {
+            if(packet->flag == FLAG_SYN && state ==WAITING_FOR_SYN)
+            {   
+                dst_port = unpack_uint16(packet->src_port);
+                state = WAITING_FOR_ACK;
+                seq_l = unpack_uint32(packet->seq_num);
+                ack_l = unpack_uint32(packet->ack_num);
+                if(ack != seq_l) continue; 
+                ack  = seq_l+1;
+                //add_send_task("", 0 , FLAG_SYN | FLAG_ACK ,seq, ack,window);
+                continue;
+            }
+            if(packet->flag == FLAG_ACK && state == WAITING_FOR_ACK)
+            {
+                seq_l = unpack_uint32(packet->seq_num);
+                ack_l = unpack_uint32(packet->ack_num);
+                if(ack != seq_l) continue; 
+                //ack  = seq_l+1;
+                //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
+                //printf("connected\n");
+                state = CONNECTED;
+                continue;
+            }
+        }
+        if(type = TYPE_CLIENT)
+        {
+            if(packet->flag == FLAG_SYNACK && state ==WAITING_FOR_SYNACK)
+            {   
+                dst_port = unpack_uint16(packet->src_port);
+                state = CONNECTED;
+                seq_l = unpack_uint32(packet->seq_num);
+                ack_l = unpack_uint32(packet->ack_num);
+                if(ack != seq_l) continue; 
+                ack  = seq_l+1;
+                //add_send_task("", 0 , FLAG_SYN | FLAG_ACK ,seq, ack,window);
+                continue;
+            }
+        }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+          if( (packet->flag == FLAG_FINACK || packet->flag == FLAG_FIN) && state == CONNECTED)
+            {
+                seq_l = unpack_uint32(packet->seq_num);
+                ack_l = unpack_uint32(packet->ack_num);
+                if(ack != seq_l) continue; 
+                state = WAITING_FOR_FIN;
+                //ack  = seq_l+1;
+                //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
+                //printf("connected\n");
+                //state = CONNECTED;
+                continue;
+            }
+            if(packet->flag == FLAG_ACK && state == CONNECTED)
+            {
+                seq_l = unpack_uint32(packet->seq_num);
+                ack_l = unpack_uint32(packet->ack_num);
+                if(ack != seq_l) continue; 
+                //ack  = seq_l+1;
+                //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
+                //printf("connected\n");
+                //state = CONNECTED;
+                continue;
+            }
+            if( (packet->flag == FLAG_FINACK || packet->flag == FLAG_FIN) && state == CONNECTED)
+            {
+                seq_l = unpack_uint32(packet->seq_num);
+                ack_l = unpack_uint32(packet->ack_num);
+                if(ack != seq_l) continue; 
+                //ack  = seq_l+1;
+                //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
+                //printf("connected\n");
+                state = CLOSED;
+                continue;
+            }
         
 //        crc = ~SONIC_CRC(packet);
 
