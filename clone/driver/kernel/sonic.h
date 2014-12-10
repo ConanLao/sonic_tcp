@@ -204,9 +204,6 @@ struct sonic_packet {
     short len;
     uint32_t idle;
     uint64_t idle_bits; 
-//    uint32_t seq_number;
-//    uint32_t ack_number;
-//    uint8_t flag;
     uint8_t buf[0];
 };
 
@@ -621,3 +618,13 @@ uint16_t udp_csum(struct udphdr *, struct iphdr *);
 #define WAITING_FOR_FIN 4
 #define CLOSED 5
 
+#define TYPE_SERVER 0
+#define TYPE_CLIENT 1
+
+void pack_uint16(uint16_t val, uint8_t* buf);
+
+uint16_t unpack_uint16(const uint8_t* buf);
+
+void pack_uint32(uint32_t val, uint8_t* buf);
+
+uint32_t unpack_uint32(const uint8_t* buf);
