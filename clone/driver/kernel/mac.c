@@ -18,7 +18,7 @@
 
 #include "sonic.h"
 
-int state = WAITING_FOR_SYN;
+atomic_t state;
 
 inline int sonic_update_csum_dport_id(uint8_t *p, int id, 
         int num_queue, int port_base)
