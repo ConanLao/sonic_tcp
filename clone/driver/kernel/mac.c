@@ -200,6 +200,8 @@ inline int sonic_send_syn(struct sonic_packets *packets,
         }
 	if (j==0) {
 	    info->flag = FLAG_SYN;
+	    info->seq_number = 0;
+	    info->ack_number = 0;
 	    sonic_fill_frame(info, packet->buf, info->pkt_len);
 	    info->flag = 0;
 	}
@@ -281,18 +283,22 @@ int sonic_mac_pkt_generator_loop(void *args)
     SONIC_DPRINT("\n");
 
     tcnt = sonic_prepare_pkt_gen_fifo(out_fifo, info);
+    
 
     //START_CLOCK();
 
     if (sonic_gen_idles(mac->port, out_fifo, info->wait))
         goto end;
-    
+    SONIC_DPRINT("wait time = %d\n", info->wait);    
     START_CLOCK();
     if (isClient) { //client
 	state = WAITING_FOR_SYNACK;
 	while (state == WAITING_FOR_SYNACK){
 	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
 	    tid = sonic_send_syn(packets, info, tid, default_idle);
+	    if (sonic_gen_idles(mac->port, out_fifo, info->wait)) {
+		goto end;
+	    }
 	}
     }else{ //server
 	
