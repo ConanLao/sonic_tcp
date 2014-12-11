@@ -534,11 +534,12 @@ void print_dma_page(struct sonic_dma_page *page)
 int sonic_gen_idles(struct sonic_port *port, struct sonic_fifo *fifo, int nsec)
 {
     const volatile int * const stopper = &port->stopper;
-    uint64_t beginning_idles = 8 * 0x9502f90ULL; // # of idles per second
+    uint64_t beginning_idles = 8 * 0x9502f90ULL / 1000; // # of idles per millisecond
     uint64_t default_idle = power_of_two(fifo->exp) * 496; 
     struct sonic_packets *packets;
     struct sonic_packet *packet;
 
+    //beginning_idles *= nsec;
     beginning_idles *= nsec;
 
     while(beginning_idles >= default_idle) {

@@ -631,7 +631,7 @@ uint16_t udp_csum(struct udphdr *, struct iphdr *);
 #define WAITING_FOR_SYNACK 1 
 #define WAITING_FOR_ACK 2
 #define CONNECTED 3
-#define WAITING_FOR_FIN 4
+#define WAITING_FOR_FINACK 4
 #define CLOSED 5
 
 #define TYPE_SERVER 0

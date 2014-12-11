@@ -32,7 +32,7 @@
     SONIC_CONFIG_RUNTIME(pkt_cnt, 1000000, 1000000)           \
     SONIC_CONFIG_RUNTIME(chain_idle, 12, 12)            \
     SONIC_CONFIG_RUNTIME(chain_num, 1000, 1000)         \
-    SONIC_CONFIG_RUNTIME(wait, 5, 5)                    \
+    SONIC_CONFIG_RUNTIME(wait, 2, 5)                    \
     SONIC_CONFIG_RUNTIME(multi_queue, 1, 1)             \
     SONIC_CONFIG_RUNTIME(delta, 1018, 1018)             \
     SONIC_CONFIG_RUNTIME(delay, 0, 248)             
