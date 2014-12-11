@@ -16,7 +16,7 @@
 #include <linux/types.h>
 #include "sonic.h"
 
-int num_to_send = 10000;
+int num_to_send = 1000000;
 int need_to_ack = 0;
 
 typedef struct tcp_header tcp_header_t;
@@ -25,7 +25,7 @@ typedef struct tcp_header tcp_header_t;
 unsigned int client_state, server_state;
 uint32_t seq = 0;
 uint32_t ack = 0;
-int window = 1;
+int window = 10000;
 void pack_uint16(uint16_t val, uint8_t* buf) {
     val = htons(val);
     memcpy(buf, &val, sizeof(uint16_t));
@@ -303,7 +303,7 @@ int sonic_mac_pkt_generator_loop(void *args)
 	    }*/
 	    put_write_entry(out_fifo, packets);
 	    SONIC_DPRINT("stat->total_time = %ld, total_packets = %ld\n", stat->total_time, stat->total_packets); 
-	    sonic_gen_idles(mac->port, out_fifo, 1);
+	    if (sonic_gen_idles(mac->port, out_fifo, 1)) goto end;
 	    
 	}
 	    //SONIC_DPRINT("CLIENT rdy to ACK(in handshake)\n");
@@ -325,36 +325,39 @@ int sonic_mac_pkt_generator_loop(void *args)
 	int num_sent = 0;
 	int start_seq = seq;
 	while (num_sent < len) {
-	    //SONIC_DPRINT("window = %d\n", window);
+	    SONIC_DPRINT("window = %d\n", window);
 	    int i;
 	    int s = seq;
 	    int start = s;
 	    int sum = 0;
 	    //for ( i = 0; i < window; i++) {
-		packets = (struct sonic_packets *) get_write_entry(out_fifo);
-		if (!packets) goto end;
 		//SONIC_DPRINT("sending data\n");
-		if (len -  num_sent > window) {
-		    packets->pkt_cnt = window;
-		} else {
-		    packets->pkt_cnt = len - num_sent;
-		}
-		tid = sonic_tcp_send(packets, info, tid, default_idle, 0, seq, 0);//first 0 is the flag
-		put_write_entry(out_fifo, packets);
-		s += window;
-		sum += window;
-		//if (sum + num_sent >= len){
+		while (sum< window) {
+		    packets = (struct sonic_packets *) get_write_entry(out_fifo);
+		    if (!packets) goto end;
+		    if (window - sum > tcnt) {
+			packets->pkt_cnt = tcnt;
+		    } else {
+			packets->pkt_cnt = window - sum;
+		    }
+		    tid = sonic_tcp_send(packets, info, tid, default_idle, 0, s, 0);//first 0 is the flag
+		    put_write_entry(out_fifo, packets);
+		    s += packets->pkt_cnt;
+		    sum += packets->pkt_cnt;
+
+		}	
+		
+	    
+				//if (sum + num_sent >= len){
 		 //   break;
 		//}
 	    //}
 
-	    sonic_gen_idles(mac->port, out_fifo, 10);
+	    if (sonic_gen_idles(mac->port, out_fifo, 3)) goto end;
 	    if (sum == seq - start) {
-		if (window < tcnt) {
-		    window = window +1;
-	    }
+		    window = window +100;
 	    } else {
-		window = window / 2;
+		window = window /2;
 		if (window == 0) {
 		    window = 1;
 		}
@@ -372,7 +375,7 @@ int sonic_mac_pkt_generator_loop(void *args)
 	    packets->pkt_cnt = 1;
 	    tid = sonic_tcp_send(packets, info, tid, default_idle, FLAG_FIN, seq, 0);
 	    put_write_entry(out_fifo, packets);
-	    sonic_gen_idles(mac->port, out_fifo, 1);
+	    if (sonic_gen_idles(mac->port, out_fifo, 1)) goto end;
 	}
 	SONIC_DPRINT("end of user send\n");
     }else{ //server
@@ -383,7 +386,7 @@ int sonic_mac_pkt_generator_loop(void *args)
 	//SONIC_DPRINT("server initial state = %d\n", server_state);
 	while (server_state == WAITING_FOR_SYN){
 	    //SONIC_DPRINT("SERVER sending idles\n");
-	    sonic_gen_idles(mac->port, out_fifo, 10);
+	    if (sonic_gen_idles(mac->port, out_fifo, 10));
 	}
 	while (server_state == WAITING_FOR_ACK){
 	    //SONIC_DPRINT("SERVER sending SYNACK in state %d\n", server_state);
@@ -402,17 +405,17 @@ int sonic_mac_pkt_generator_loop(void *args)
 	}
 	START_CLOCK();
 	while (server_state == CONNECTED) {
-	    if (need_to_ack) {
+//	    if (need_to_ack) {
 		packets = (struct sonic_packets *) get_write_entry(out_fifo);
 		if (!packets) goto end;
 		//SONIC_DPRINT("sever sending back ack %d\n", ack);
 		tid = sonic_tcp_send(packets, info, tid, default_idle, FLAG_ACK, 0, ack);
 		put_write_entry(out_fifo, packets);
-		sonic_gen_idles(mac->port, out_fifo, 1);
-		need_to_ack = 0;
-	    } else {
-		sonic_gen_idles(mac->port, out_fifo, 1);
-	    }
+		//if (sonic_gen_idles(mac->port, out_fifo, 1)) goto end;
+//		need_to_ack = 0;
+//	    } else {
+//		if (sonic_gen_idles(mac->port, out_fifo, 1)) goto end;
+//	    }
 	}
 	packets = (struct sonic_packets *) get_write_entry(out_fifo);
 	if (!packets) goto end;
@@ -442,6 +445,9 @@ begin:
     if (*stopper == 0)
         goto begin;
 */
+    SONIC_DPRINT("finishing up\n");
+    if (sonic_gen_idles(mac->port, out_fifo, 1000*1000))
+        goto end;
 end:
 
     STOP_CLOCK(stat);
@@ -625,6 +631,7 @@ begin:
             {
                 if(ack_l <= seq) continue; 
                 seq = ack_l;
+		//SONIC_DPRINT("ack = %d\n", ack_l);
                 //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
                 //printf("connected\n");
                 //state = CONNECTED;
