@@ -385,7 +385,7 @@ struct tcp_header
 {
     uint8_t src_port[2];
     uint8_t dst_port[2];
-    uint8_t seq_num_b[2];
+    uint8_t seq_num[2];
     uint8_t seq_num_s[2];
     uint8_t ack_num_b[2];
     uint8_t ack_num_s[2];

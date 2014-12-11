@@ -319,20 +319,7 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
 {
     //SONIC_DPRINT("sonic_fill_tcp begin\n");
     //struct udphdr *udp = (struct udphdr *) data;
-    struct tcp_header *tcp= (struct tcp_header_t *)data;
-    pack_16(info->port_src, tcp->src_port);
-    pack_16(info->port_dst, tcp->dst_port);
-    //pack_16(info->seq_number / 65536 , tcp->seq_num_b);
-    //pack_16(info->seq_number % 65536 , tcp->seq_num_s);
-    //pack_16(info->ack_number / 65536 , tcp->ack_num_b);
-    //pack_16(info->ack_number % 65536 , tcp->ack_num_s);
-    pack_16(1, tcp->seq_num_b);
-    pack_16(2, tcp->seq_num_s);
-    pack_16(3 , tcp->ack_num_b);
-    pack_16(4, tcp->ack_num_s);
  
-    tcp->flags = info->flag;
-    /**
     struct tcphdr *tcp = (struct tcphdr *)data;
     //udp->source = htons(info->port_src);
     //udp->dest = htons(info->port_dst);
@@ -341,13 +328,13 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
     tcp->dest = htons(info->port_dst);
     //tcp->seq = htonl(info->seq_number);
     //tcp->ack_seq = htonl(info->ack_number);
-    tcp->seq = info->seq_number;
-    tcp->ack_seq = info->ack_number;
+    tcp->seq = htonl(info->seq_number);
+    tcp->ack_seq = htonl(info->ack_number);
     //SONIC_DPRINT("info->seq_numer=%d\n", info->seq_number);
     //SONIC_DPRINT("packed seq = %u\n", tcp->seq);
     //tcp->seq = info->seq_number;
     //tcp->ack_seq = info->ack_number;
-    memcpy(((uint8_t*)tcp)+13,&(info->flag),sizeof(uint8_t)); */
+    memcpy(((uint8_t*)tcp)+13,&(info->flag),sizeof(uint8_t)); 
     //udp->len = htons(len-4);
     //SONIC_DPRINT("HERE!!,6");
     sonic_fill_tcp_payload(data + TCP_HLEN , len - TCP_HLEN);
@@ -386,8 +373,6 @@ static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, i
 //	exit(1);
 #endif
 
-    SONIC_PRINT("fill_tcp seq_num_b = %u, seq_num_s =%u, flag = %u\n", unpack_16(tcp->seq_num_b), unpack_16(tcp->seq_num_s), info->flag);
-    SONIC_PRINT("fill_tcp ack_num_b = %u, ack_num_s =%u, flag = %u\n", unpack_16(tcp->ack_num_b), unpack_16(tcp->ack_num_s), info->flag);
 }
 
 static inline void sonic_fill_ip(struct sonic_port_info *info, uint8_t *data, int len)

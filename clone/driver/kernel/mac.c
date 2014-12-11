@@ -195,7 +195,6 @@ inline int sonic_tcp_send(struct sonic_packets *packets,
         struct sonic_port_info *info, int tid, uint64_t default_idle, uint8_t flag, uint32_t s, uint32_t a)
 {
    
-    SONIC_DPRINT("s = %d, a = %d\n", s, a); 
     //SONIC_DPRINT("update begin\n");
     struct sonic_packet *packet;
     int i, covert_bit;
@@ -302,9 +301,9 @@ int sonic_mac_pkt_generator_loop(void *args)
     if (isClient) { //client
     SONIC_DPRINT("wait time = %d\n", info->wait);    
 	int k = 0;
-	SONIC_DPRINT("client initial state = %d\n", client_state);
+	//SONIC_DPRINT("client initial state = %d\n", client_state);
 	while (client_state == WAITING_FOR_SYNACK){
-	    SONIC_DPRINT("CLIENT sending SYN\n");
+	    //SONIC_DPRINT("CLIENT sending SYN\n");
 	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
 	    //tid = sonic_update_fifo_pkt_gen(packets, info, tid, default_idle);
 	    tid = sonic_tcp_send(packets, info, tid, default_idle, FLAG_SYN, seq, 0);
@@ -315,10 +314,10 @@ int sonic_mac_pkt_generator_loop(void *args)
 	    put_write_entry(out_fifo, packets);
 	    sonic_gen_idles(mac->port, out_fifo, 1);
 	}
-	    SONIC_DPRINT("CLIENT rdy to ACK(in handshake)\n");
+	    //SONIC_DPRINT("CLIENT rdy to ACK(in handshake)\n");
 	int j;
 	for (j = 0; j< 10; j++) {
-	    SONIC_DPRINT("CLIENT sending ACK(in handshake)\n");
+	    //SONIC_DPRINT("CLIENT sending ACK(in handshake)\n");
 	    
 	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
 	    //tid = sonic_update_fifo_pkt_gen(packets, info, tid, default_idle);
@@ -331,13 +330,13 @@ int sonic_mac_pkt_generator_loop(void *args)
 
 	}
     }else{ //server
-	SONIC_DPRINT("server initial state = %d\n", server_state);
+	//SONIC_DPRINT("server initial state = %d\n", server_state);
 	while (server_state == WAITING_FOR_SYN){
-	    SONIC_DPRINT("SERVER sending idles\n");
+	    //SONIC_DPRINT("SERVER sending idles\n");
 	    sonic_gen_idles(mac->port, out_fifo, 1);
 	}
 	while (server_state == WAITING_FOR_ACK){
-	    SONIC_DPRINT("SERVER sending SYNACK in state %d\n", server_state);
+	    //SONIC_DPRINT("SERVER sending SYNACK in state %d\n", server_state);
 	    
 	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
 	    //tid = sonic_update_fifo_pkt_gen(packets, info, tid, default_idle);
@@ -475,13 +474,9 @@ begin:
     tcp_header_t* tcph = get_tcph(packet);
     src_port = unpack_uint16(tcph->src_port);
     dst_port = unpack_uint16(tcph->dst_port);
-    seq_l = unpack_uint16(tcph->seq_num_b) * 65536 
-	    + unpack_uint16(tcph->seq_num_s);
-    ack_l = unpack_uint16(tcph->ack_num_b) * 65536 
-	    + unpack_uint16(tcph->ack_num_s);
-    SONIC_PRINT("seq_num_b = %d, seq_num_s =%d\n", unpack_uint16(tcph->seq_num_b), unpack_uint16(tcph->seq_num_s));
-    SONIC_PRINT("ack_num_b = %d, ack_num_s =%d\n", unpack_uint16(tcph->ack_num_b), unpack_uint16(tcph->ack_num_s));
-    SONIC_PRINT("====ack = %u, seq_l = %u, src_port:%d, dst_port:%d\n", ack_l, seq_l, src_port,dst_port);
+    seq_l = unpack_uint32(tcph->seq_num); 
+    ack_l = unpack_uint32(tcph->ack_num_b); 
+    //SONIC_PRINT("====ack = %u, seq_l = %u, src_port:%d, dst_port:%d\n", ack_l, seq_l, src_port,dst_port);
     if(tcph->flags == FLAG_RST)
           {
             client_state = CLOSED;
@@ -491,49 +486,51 @@ begin:
         //server:
         if(type == TYPE_SERVER)
         {
-	SONIC_PRINT("SERVER with state %d received a packet with flag = %d \n", server_state, tcph->flags);
+	//SONIC_PRINT("SERVER with state %d received a packet with flag = %d \n", server_state, tcph->flags);
             if(tcph->flags == FLAG_SYN && server_state == WAITING_FOR_SYN)
             {   
-		SONIC_DPRINT("SERVER received SYN, changing state from waiting for syn to waiting for ack\n");
+		//SONIC_DPRINT("SERVER received SYN, changing state from waiting for syn to waiting for ack\n");
                 //dst_port = unpack_uint16(tcph->src_port);
                 server_state = WAITING_FOR_ACK;
                 //seq_l = unpack_uint32(tcph->seq_num);
                 //seq_l = tcph->seq_num;
-		SONIC_PRINT("ack = %ld, seq_l = %ld\n", ack, seq_l);
+		//SONIC_PRINT("ack = %ld, seq_l = %ld\n", ack, seq_l);
                 if(ack != seq_l) continue;
-                ack  = ack+1;
+                ack  = seq+1;
                 //add_send_task("", 0 , FLAG_SYN | FLAG_ACK ,seq, ack,window);
                 continue;
             }
             if(tcph->flags == FLAG_ACK && server_state == WAITING_FOR_ACK)
             {	
-		SONIC_DPRINT("SERVER received ACK(handshake), changing state from waiting for ack to connected\n");
+		//SONIC_DPRINT("SERVER received ACK(handshake), changing state from waiting for ack to connected\n");
 		
                 //seq_l = unpack_uint32(tcph->seq_num);
                 //seq_l = tcph->seq_num;
-		SONIC_PRINT("ack = %ld, seq_l = %ld\n", ack, seq_l);
+		//SONIC_PRINT("ack = %ld, seq_l = %ld\n", ack, seq_l);
                 if(ack != seq_l) continue; 
                 //ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_ACK ,seq, ack,window);
                 //printf("connected\n");
                 server_state = CONNECTED;
+		SONIC_DPRINT("SERVER connection established; state = %d, ack = %d \n", client_state, ack);
                 continue;
             }
         }
-        if(type = TYPE_CLIENT)
+        if(type == TYPE_CLIENT)
         {
-	    SONIC_DPRINT("CLIENT with state %d received a packet with flag = %d \n", client_state, tcph->flags);
+	    //SONIC_DPRINT("CLIENT with state %d received a packet with flag = %d \n", client_state, tcph->flags);
             if(tcph->flags == FLAG_SYNACK && client_state ==WAITING_FOR_SYNACK)
             {   
-		SONIC_DPRINT("CLIENT received SYNACK, changing state from waiting for synack to connected\n");
+		//SONIC_DPRINT("CLIENT received SYNACK, changing state from waiting for synack to connected\n");
                 seq = seq+1;
-                SONIC_DPRINT("XXXXXseq = %d\n", seq);
+                //SONIC_DPRINT("XXXXXseq = %d\n", seq);
 		//dst_port = unpack_uint16(tcph->src_port);
                 client_state = CONNECTED;
                 //ack_l = unpack_uint32(tcph->ack_num);
                 //if(seq != ack_l) continue; 
                 //ack  = seq_l+1;
                 //add_send_task("", 0 , FLAG_SYN | FLAG_ACK ,seq, ack,window);
+		SONIC_DPRINT("CLIENT connection established; state = %d, seq = %d \n", client_state, seq);
                 continue;
             }
         }
