@@ -100,8 +100,8 @@ clean:
 # handling driver
 load: sonic.ko
 	sudo rmmod sonic; sudo insmod sonic.ko
-	/home/kslee/bin/enable2ports.sh 2>&1 > /dev/null
-	/home/kslee/bin/enable5gts.sh 2>&1 > /dev/null
+#	/home/kslee/bin/enable2ports.sh 2>&1 > /dev/null
+#	/home/kslee/bin/enable5gts.sh 2>&1 > /dev/null
 
 unload: sonic.ko
 	sudo rmmod sonic
