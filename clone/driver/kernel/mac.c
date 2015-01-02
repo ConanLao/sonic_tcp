@@ -25,7 +25,7 @@ typedef struct tcp_header tcp_header_t;
 unsigned int client_state, server_state;
 uint32_t seq = 0;
 uint32_t ack = 0;
-int window = 1;
+int window = 1000;
 void pack_uint16(uint16_t val, uint8_t* buf) {
     val = htons(val);
     memcpy(buf, &val, sizeof(uint16_t));
@@ -117,7 +117,7 @@ static inline int retrieve_bit(char * msg, int msg_len, int id)
     return bit;
 }
 
-
+/**
 inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets, 
 	struct sonic_port_info *info, int tid, uint64_t default_idle)
 {
@@ -163,7 +163,7 @@ inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
 
     return tid;
 }
-
+*/
 inline int sonic_tcp_send(struct sonic_packets *packets, 
 	struct sonic_port_info *info, int tid, uint64_t default_idle, uint8_t flag, uint32_t s, uint32_t a)
 {
@@ -171,7 +171,6 @@ inline int sonic_tcp_send(struct sonic_packets *packets,
     struct sonic_packet *packet;
     int i, covert_bit;
     uint32_t *pcrc, crc, idle;
-    int j = 0;
     FOR_SONIC_PACKETS(i, packets, packet) {
 	if (unlikely(tid == info->pkt_cnt)) {
 	    packet->len = 0;
@@ -179,11 +178,17 @@ inline int sonic_tcp_send(struct sonic_packets *packets,
 	    packets->pkt_cnt = i == 0? 1 : i; 
 	    return tid;
 	}
-	info->flag = flag;
-	info->seq_number = s;
-	info->ack_number = a;
-	j ++;
-	sonic_fill_frame(info, packet->buf, info->pkt_len);
+	//info->flag = flag;
+	//info->seq_number = s;
+	//info->ack_number = a;
+	//sonic_fill_frame(info, packet->buf, info->pkt_len);
+	uint8_t *data = packet->buf;
+	struct ethhdr *eth = (struct ethhdr *) (data + PREAMBLE_LEN);       // preamble
+	struct iphdr *ip = (struct iphdr *) (((uint8_t *) eth) + ETH_HLEN);
+	struct tcphdr *tcp = (struct tcphdr *) (((uint8_t *) ip) + IP_HLEN);
+	tcp->seq = htonl(s);
+	tcp->ack_seq = htonl(a);
+	memcpy(((uint8_t*)tcp)+13,&flag,sizeof(uint8_t));
 	s++;
 	idle = info->idle;
 	switch(info->gen_mode) {
@@ -214,9 +219,65 @@ inline int sonic_tcp_send(struct sonic_packets *packets,
     return tid;
 }
 
+inline int sonic_update_fifo_pkt_gen(struct sonic_packets *packets,
+        struct sonic_port_info *info, int tid, uint64_t default_idle)
+{
+    struct sonic_packet *packet;
+    int i, covert_bit;
+    uint32_t *pcrc, crc, idle;
+
+    FOR_SONIC_PACKETS(i, packets, packet) {
+        if (unlikely(tid == info->pkt_cnt)) {
+            packet->len = 0;
+            packet->idle = default_idle;
+            packets->pkt_cnt = i == 0? 1 : i;
+            return tid;
+        }
+
+//        SONIC_PRINT("%d\n", tid);
+
+        sonic_update_csum_dport_id(packet->buf, tid, info->multi_queue,
+                info->port_dst);
+
+        idle = info->idle;
+        switch(info->gen_mode) {
+        case SONIC_PKT_GEN_CHAIN:
+            if (tid % info->chain_num == 0)
+                idle = info->chain_idle;
+            break;
+        case SONIC_PKT_GEN_COVERT:
+            covert_bit = retrieve_bit(info->covert_msg, strlen(info->covert_msg), tid);
+            if (covert_bit)
+                idle = ((info->idle - info->delta)< 12) ? 12 : (info->idle - info->delta);
+            else
+                idle = info->idle + info->delta;
+            break;
+        }
+
+        if (unlikely(i == 0)){
+            packet->len = info->pkt_len + 8;
+            packet->idle = tid == 0 ? info->delay : idle;
+        } else
+            packet->idle = idle;
+
+        pcrc = (uint32_t *) CRC_OFFSET(packet->buf, packet->len);
+        *pcrc = 0;
+        crc = SONIC_CRC(packet) ^ 0xffffffff;
+        *pcrc = crc;
+
+        tid++;
+    }
+
+    packets->pkt_cnt = i;
+
+    return tid;
+}
+
+
 //tcp send
 int sonic_mac_pkt_generator_loop(void *args)
 {   
+    int count;
     SONIC_THREAD_COMMON_VARIABLES(mac, args);
     int isClient = (mac->port_id == 0);
     unsigned int state;
@@ -235,7 +296,7 @@ int sonic_mac_pkt_generator_loop(void *args)
     struct sonic_packets *packets;
     struct sonic_mac_stat *stat = &mac->stat;
 
-    int tid=1, tcnt=0;
+    int tid=0, tcnt=0;
     uint64_t default_idle = power_of_two(out_fifo->exp) * 496;
 
     SONIC_DPRINT("\n");
@@ -249,7 +310,7 @@ int sonic_mac_pkt_generator_loop(void *args)
 	goto end;
 
     if (isClient) { //client
-
+	
 	while (client_state == WAITING_FOR_SYNACK){
 	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
 	    if (!packets) goto end;
@@ -265,11 +326,32 @@ int sonic_mac_pkt_generator_loop(void *args)
 	tid = sonic_tcp_send(packets, info, tid, default_idle, FLAG_ACK, seq, 0);
 
 	put_write_entry(out_fifo, packets);
-
+	
 	START_CLOCK();
 	unsigned int len = num_to_send;
 	int num_sent = 0;
 	int start_seq = seq;
+		//test
+		SONIC_DPRINT("tcnt = %d\n", tcnt);
+		//while (num_sent < len) {
+	/**
+	begin:
+	    packets = (struct sonic_packets *) get_write_entry(out_fifo);
+		    if (!packets) 
+			goto end;
+		    packets->pkt_cnt = tcnt;
+		    //tid = sonic_update_fifo_pkt_gen(packets, info, tid, default_idle);
+		    tid = sonic_tcp_send(packets, info, tid, default_idle, 0, seq, 0);
+		    put_write_entry(out_fifo, packets);
+		    count++;
+		//}
+	    if (*stopper == 0)
+	        goto begin;
+	    else
+		goto end;
+	*/
+
+	
 	while (num_sent < len) {
 	    int i;
 	    int s = seq;
@@ -290,9 +372,11 @@ int sonic_mac_pkt_generator_loop(void *args)
 		sum += packets->pkt_cnt;
 	    }	
 
-	    if (sonic_gen_idles(mac->port, out_fifo, 30)) 
+	    if (sonic_gen_idles(mac->port, out_fifo, 40)) 
 		goto end;
-
+	    
+	    SONIC_DPRINT("window = %d\n", window);
+	    
 	    if (sum == seq - start) {
 		window = window + 1;
 	    } else {
@@ -302,6 +386,7 @@ int sonic_mac_pkt_generator_loop(void *args)
 	    }
 	    num_sent = seq - start_seq;
 	}  
+	
 	client_state = WAITING_FOR_FINACK;
 
 	while (client_state == WAITING_FOR_FINACK) {

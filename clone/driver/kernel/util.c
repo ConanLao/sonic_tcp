@@ -315,6 +315,8 @@ static inline void sonic_fill_tcp_payload(uint8_t *data, int len)
     }
 }
 
+
+
 static inline void sonic_fill_tcp(struct sonic_port_info *info, uint8_t *data, int len,struct iphdr *iph)
 {
     //SONIC_DPRINT("sonic_fill_tcp begin\n");
@@ -427,6 +429,10 @@ static inline void sonic_fill_eth(struct sonic_port_info *info, uint8_t *data, i
 void sonic_fill_packet(uint8_t *data, int len)
 {
     sonic_fill_tcp_payload(data, len);
+}
+
+void sonic_update_tcp(uint8_t *data, uint32_t seq, uint32_t ack, uint8_t flag){
+    return;    
 }
 
 /* the address of data must be aligned to 16k + 8 */
